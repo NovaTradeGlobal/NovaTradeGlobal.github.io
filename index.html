@@ -1,0 +1,181 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>NovaTrade — Trading Dashboard</title>
+<meta name="theme-color" content="#100d32">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root{--bg:#100d32;--panel:#17133e;--panel2:#1d1949;--green:#08e7a1;--red:#ff505e;--muted:#9998c3;--white:#f7f6ff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--white);font-family:Arial,Helvetica,sans-serif;font-size:14px}
+button,input,select{font:inherit}
+button{cursor:pointer}
+header{position:sticky;top:0;z-index:10;background:#100d32f5;border-bottom:1px solid #302b5c;padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
+.brand{font-weight:900;font-size:22px;letter-spacing:-1px;color:var(--green)}
+.brand span{color:white}
+.live{font-size:10px;color:var(--green);border:1px solid #176f61;border-radius:20px;padding:6px 9px}
+main{max-width:600px;margin:auto;padding:14px 14px 100px}
+.page{display:none}.page.active{display:block}
+.card{background:linear-gradient(145deg,#191641,#131033);border:1px solid #2c2759;border-radius:17px;padding:16px;margin-bottom:14px;box-shadow:0 8px 24px #05041b40}
+.section-title{font-size:12px;letter-spacing:1.5px;color:#c6c4e8;font-weight:800;margin:0 0 15px}
+.topline{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.balance-label{font-size:11px;color:var(--muted)}
+.balance{font-size:19px;font-weight:800;margin-top:5px}
+.deposit{border:0;background:#f0ed43;color:#28213a;border-radius:9px;padding:11px 13px;font-size:12px;font-weight:900}
+.demo-banner{background:#252044;border:1px solid #50476b;color:#ddd8ff;border-radius:9px;padding:9px 11px;font-size:11px;margin:13px 0}
+.demo-banner b{color:#ffe56b}
+.chartbox{height:180px;position:relative}
+.market-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.coin-title{font-size:18px;font-weight:800}.coin-price{font-size:22px;font-weight:800;margin:6px 0}
+.muted{color:var(--muted);font-size:12px}
+.timeframes{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.timeframes button,.amounts button{background:#17143b;color:white;border:1px solid #393460;border-radius:9px;padding:9px 13px;font-weight:700}
+.timeframes button.selected,.amounts button.selected{border-color:var(--green);color:var(--green);background:#0a604b35}
+.trade-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.trade-heading .section-title{margin:0}
+.status{font-size:10px;color:var(--green);background:#123e3c;border-radius:30px;padding:7px 10px;font-weight:800}
+.trade-buttons{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.trade-btn{height:66px;border:0;border-radius:15px;color:white;font-size:18px;font-weight:900;letter-spacing:.5px}
+.buy{background:linear-gradient(120deg,#08dba0,#00c78c);box-shadow:0 5px 20px #00d99a25;color:#082b26}
+.sell{background:linear-gradient(120deg,#ff6372,#f13b4c);box-shadow:0 5px 20px #ff435525}
+.field-label{font-size:11px;letter-spacing:1.2px;color:#b8b5dc;font-weight:800;margin:23px 0 12px}
+.amount-value{font-size:23px;font-weight:900;margin:15px 0;color:white}
+.amount-value span{color:var(--green)}
+.amounts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:15px 0 20px}
+.amounts button{padding:14px 5px}
+input,select{width:100%;background:#100d30;border:1px solid #38315f;color:white;border-radius:10px;padding:13px;outline:none}
+input:focus,select:focus{border-color:var(--green)}
+.input-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.primary{width:100%;border:0;border-radius:12px;padding:15px;background:var(--green);color:#082b26;font-weight:900;margin-top:16px}
+.secondary{background:#29234f;color:white;border:1px solid #49416f;border-radius:10px;padding:11px;font-weight:700}
+.round-price{width:72px;height:72px;border-radius:50%;background:conic-gradient(#00edac,#f9e64b,#fa5c9b,#704bff,#00edac);padding:5px;display:flex;align-items:center;justify-content:center}
+.round-price div{background:#18133d;border-radius:50%;height:100%;width:100%;display:flex;align-items:center;justify-content:center;font-size:20px}
+.info-row{display:flex;justify-content:space-between;gap:10px;margin:16px 0;color:#c6c3e9}
+.green{color:var(--green)}.red{color:var(--red)}
+.bottomnav{position:fixed;bottom:0;left:0;right:0;z-index:20;background:#100d32f7;border-top:1px solid #302b5c;display:grid;grid-template-columns:repeat(5,1fr);padding:8px 3px max(8px,env(safe-area-inset-bottom))}
+.navbtn{background:none;border:0;color:#9a96bd;display:flex;flex-direction:column;align-items:center;gap:5px;font-size:10px;padding:5px 0}
+.navbtn .ico{font-size:22px}.navbtn.active{color:var(--green)}.navbtn.active .ico{filter:drop-shadow(0 0 7px #00e6a1)}
+.listrow{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid #30294f;padding:13px 0}
+.listrow:last-child{border:0}
+.coin-icon{display:inline-flex;width:34px;height:34px;align-items:center;justify-content:center;border-radius:50%;background:#2c2658;font-weight:900;margin-right:9px}
+.coin-name{display:flex;align-items:center;min-width:0}
+.small{font-size:11px;color:var(--muted);margin-top:4px}
+.notice{padding:12px;border-radius:10px;background:#262044;color:#d2cfee;font-size:12px;line-height:1.5;margin:10px 0}
+#toast{position:fixed;top:75px;left:50%;transform:translateX(-50%);z-index:50;background:#26234a;border:1px solid #514a76;border-radius:12px;padding:12px 16px;display:none;max-width:90%;box-shadow:0 5px 25px #0008}
+h2{font-size:21px;margin:0 0 8px}
+@media(min-width:550px){main{padding-top:22px}.chartbox{height:230px}}
+</style>
+</head>
+<body>
+<header>
+ <div class="brand">NOVA<span>TRADE</span></div>
+ <div class="live">● LIVE MARKETS</div>
+</header>
+<div id="toast"></div>
+<main>
+<section class="page active" id="home">
+ <div class="card">
+  <div class="topline">
+   <div><div class="balance-label">DEMO ACCOUNT BALANCE</div><div class="balance" id="homeBalance">$10,000.00</div></div>
+   <button class="deposit" onclick="showPage('wallet')">WALLET</button>
+  </div>
+  <div class="demo-banner"><b>DEMO MODE</b> · Simulated funds only. No real-money trading.</div>
+  <div class="market-head"><div><div class="muted">SELECTED MARKET</div><div class="coin-title" id="homeCoin">Bitcoin · BTC</div><div class="coin-price" id="homePrice">Loading…</div><div class="muted" id="homeChange">Live market data</div></div><button class="secondary" onclick="showPage('markets')">Markets ↗</button></div>
+  <div class="chartbox"><canvas id="homeChart"></canvas></div>
+  <div class="timeframes">
+   <button class="selected" onclick="setPeriod('1',this)">1D</button><button onclick="setPeriod('7',this)">1W</button><button onclick="setPeriod('30',this)">1M</button><button onclick="setPeriod('90',this)">3M</button><button onclick="setPeriod('365',this)">1Y</button>
+  </div>
+ </div>
+ <div class="card">
+  <div class="trade-heading"><div class="section-title">TRADING PANEL</div><div class="status">● DEMO</div></div>
+  <div class="muted">Market: <b id="tradeCoinLabel" style="color:white">BTC / USD</b></div>
+  <div class="trade-buttons" style="margin-top:14px">
+   <button class="trade-btn buy" onclick="placeTrade('BUY')">↗ BUY</button>
+   <button class="trade-btn sell" onclick="placeTrade('SELL')">↘ SELL</button>
+  </div>
+  <div class="field-label">TRADE AMOUNT</div>
+  <div class="amount-value"><span>$</span> <span id="amountDisplay" style="color:white">40</span></div>
+  <div class="amounts">
+   <button onclick="setAmount(10,this)">$10</button><button class="selected" onclick="setAmount(40,this)">$40</button><button onclick="setAmount(100,this)">$100</button><button onclick="setAmount(500,this)">$500</button><button onclick="setAmount(1000,this)">$1,000</button><button onclick="setAmount(2500,this)">$2,500</button>
+  </div>
+  <div class="input-row"><div><div class="field-label">MARKET</div><select id="orderType" onchange="document.getElementById('limitWrap').style.display=this.value==='limit'?'block':'none'"><option value="market">Market order</option><option value="limit">Limit order</option></select></div><div><div class="field-label">QUANTITY</div><input id="tradeAmount" type="number" min="1" value="40" oninput="syncAmount(this.value)" /></div></div>
+  <div id="limitWrap" style="display:none;margin-top:12px"><div class="field-label">LIMIT PRICE (USD)</div><input id="limitPrice" type="number" min="0.000001" placeholder="Enter limit price"></div>
+  <div class="info-row"><span>Current price</span><b id="tradePrice">Loading…</b></div>
+  <div class="info-row"><span>Estimated quantity</span><b id="tradeQty">—</b></div>
+  <button class="primary" onclick="placeTrade('BUY')">PREVIEW / EXECUTE DEMO BUY</button>
+  <div class="notice">Demo trades update your simulated portfolio and order history only. No exchange connection, deposits, or withdrawals are enabled.</div>
+ </div>
+ <div class="card"><div class="section-title">TOP MARKETS</div><div id="homeMarkets">Loading live markets…</div><button class="secondary" style="width:100%;margin-top:12px" onclick="showPage('markets')">View all markets</button></div>
+</section>
+
+<section class="page" id="markets">
+ <div class="card"><h2>Markets</h2><p class="muted">Live cryptocurrency prices</p><input id="marketSearch" placeholder="Search BTC, Bitcoin, ETH…" oninput="renderMarkets()"><div id="marketList" style="margin-top:12px">Loading markets…</div><button class="secondary" style="width:100%;margin-top:12px" onclick="loadMarkets()">↻ Refresh markets</button></div>
+</section>
+
+<section class="page" id="trade">
+ <div class="card"><h2>Trade</h2><p class="muted">Choose a market and make a simulated trade.</p><div class="field-label">MARKET</div><select id="coinSelect" onchange="selectCoin(this.value)"><option value="bitcoin">Bitcoin (BTC)</option><option value="ethereum">Ethereum (ETH)</option><option value="solana">Solana (SOL)</option></select><div style="margin-top:18px" id="tradeScreenMount"></div><button class="primary" onclick="showPage('home')">OPEN TRADING PANEL</button></div>
+</section>
+
+<section class="page" id="portfolio">
+ <div class="card"><h2>My Portfolio</h2><p class="muted">Your simulated account</p><div class="balance" id="portfolioValue">$10,000.00</div><div class="demo-banner">DEMO PORTFOLIO · Not real funds</div><div id="holdings"></div></div>
+ <div class="card"><div class="section-title">ORDER HISTORY</div><div id="orders"></div><button class="secondary" style="width:100%;margin-top:14px" onclick="clearOrders()">Clear demo history</button><button class="secondary" style="width:100%;margin-top:10px" onclick="resetDemo()">Reset demo account</button></div>
+</section>
+
+<section class="page" id="wallet">
+ <div class="card"><h2>Wallet</h2><div class="balance" id="walletBalance">$10,000.00</div><div class="demo-banner">SIMULATED BALANCE ONLY</div><div class="notice">Real deposits, M-Pesa, withdrawals and cryptocurrency transfers are not connected. Do not send money to this demo wallet.</div><button class="primary" onclick="showPage('portfolio')">View portfolio</button></div>
+</section>
+
+<section class="page" id="account">
+ <div class="card"><h2>Account</h2><p class="muted">Sign in or create your NovaTrade account.</p><div class="field-label">EMAIL ADDRESS</div><input id="email" type="email" placeholder="you@example.com"><div class="field-label">PASSWORD</div><input id="password" type="password" placeholder="At least 8 characters"><div class="field-label">DISPLAY NAME (SIGN UP)</div><input id="displayName" placeholder="Your name"><button class="primary" onclick="authAction('signin')">SIGN IN</button><button class="secondary" style="width:100%;margin-top:10px" onclick="authAction('signup')">CREATE ACCOUNT</button><button class="secondary" style="width:100%;margin-top:10px" onclick="authAction('reset')">RESET PASSWORD</button><button class="secondary" style="width:100%;margin-top:10px" onclick="authAction('signout')">SIGN OUT</button><div id="authStatus" class="notice">Account status: checking…</div></div>
+</section>
+</main>
+<nav class="bottomnav">
+ <button class="navbtn active" data-page="home" onclick="showPage('home',this)"><span class="ico">⌂</span>Home</button>
+ <button class="navbtn" data-page="markets" onclick="showPage('markets',this)"><span class="ico">⌁</span>Markets</button>
+ <button class="navbtn" data-page="trade" onclick="showPage('trade',this)"><span class="ico">⇄</span>Trade</button>
+ <button class="navbtn" data-page="portfolio" onclick="showPage('portfolio',this)"><span class="ico">▤</span>Portfolio</button>
+ <button class="navbtn" data-page="account" onclick="showPage('account',this)"><span class="ico">♙</span>Account</button>
+</nav>
+
+<script>
+const SUPABASE_URL="https://cvqdxthpdhdhwraavrzz.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable_T0h5c6Hi4CXQM3uFgkHv_w_pc3wMGtT";
+const SITE_URL="https://novatradeglobal.github.io/";
+let supabaseClient=null;
+try{if(window.supabase)supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY)}catch(e){console.log(e)}
+let markets=[],selectedId="bitcoin",amount=40,period="1",chart=null,chartReady=false;
+let demo={cash:10000,holdings:{},orders:[]};
+try{const saved=localStorage.getItem("novatrade_demo_v3");if(saved)demo={...demo,...JSON.parse(saved)}}catch(e){}
+const fmt=n=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:n<1?6:2}).format(Number(n)||0);
+function saveDemo(){try{localStorage.setItem("novatrade_demo_v3",JSON.stringify(demo))}catch(e){}renderDemo()}
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.style.display="block";clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>t.style.display="none",2800)}
+function showPage(id,btn){document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));document.getElementById(id).classList.add("active");document.querySelectorAll(".navbtn").forEach(b=>b.classList.toggle("active",b.dataset.page===id));if(id==="portfolio")renderDemo();if(id==="account")checkAuth();if(id==="trade")renderTradeScreen();window.scrollTo({top:0,behavior:"smooth"})}
+function getCoin(id){return markets.find(m=>m.id===id)}
+function priceOf(id){const m=getCoin(id);return Number(m?.current_price)||({"bitcoin":65000,"ethereum":3000,"solana":150}[id]||1)}
+function setAmount(n,btn){amount=Math.max(1,Number(n)||1);document.getElementById("amountDisplay").textContent=amount.toLocaleString("en-US");document.getElementById("tradeAmount").value=amount;document.querySelectorAll(".amounts button").forEach(b=>b.classList.remove("selected"));if(btn)btn.classList.add("selected");updateTradeEstimate()}
+function syncAmount(n){amount=Math.max(1,Number(n)||1);document.getElementById("amountDisplay").textContent=amount.toLocaleString("en-US");updateTradeEstimate()}
+function selectCoin(id){selectedId=id;const m=getCoin(id);document.getElementById("tradeCoinLabel").textContent=(m?.symbol||id).toUpperCase()+" / USD";updateTradeEstimate();loadHistory()}
+function updateTradeEstimate(){const p=priceOf(selectedId);document.getElementById("tradePrice").textContent=fmt(p);document.getElementById("tradeQty").textContent=(amount/p).toFixed(8)+" "+(getCoin(selectedId)?.symbol||selectedId).toUpperCase()}
+async function loadMarkets(){try{const r=await fetch("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false",{cache:"no-store"});if(!r.ok)throw Error("Market provider temporarily unavailable");markets=await r.json();renderMarkets();renderHomeMarkets();updateHeaderPrice();updateTradeEstimate();loadHistory()}catch(e){toast("Live prices unavailable. Try refresh shortly.");document.getElementById("marketList").textContent="Could not load prices. Please refresh."}}
+function renderMarkets(){const q=(document.getElementById("marketSearch")?.value||"").toLowerCase();const list=markets.filter(m=>(m.name+" "+m.symbol).toLowerCase().includes(q)).slice(0,50);const html=list.map(m=>`<div class="listrow"><div class="coin-name"><img src="${m.image}" width="32" height="32" style="border-radius:50%;margin-right:9px" onerror="this.style.display='none'"><div><b>${m.name}</b><div class="small">${m.symbol.toUpperCase()} · #${m.market_cap_rank||"—"}</div></div></div><div style="text-align:right"><b>${fmt(m.current_price)}</b><div class="small ${m.price_change_percentage_24h>=0?'green':'red'}">${Number(m.price_change_percentage_24h||0).toFixed(2)}%</div></div><button class="secondary" onclick="selectCoin('${m.id}');showPage('home')">Trade</button></div>`).join("");document.getElementById("marketList").innerHTML=html||"No matching markets found."}
+function renderHomeMarkets(){document.getElementById("homeMarkets").innerHTML=markets.slice(0,5).map(m=>`<div class="listrow"><div class="coin-name"><img src="${m.image}" width="30" height="30" style="border-radius:50%;margin-right:9px"><div><b>${m.name}</b><div class="small">${m.symbol.toUpperCase()}</div></div></div><div style="text-align:right"><b>${fmt(m.current_price)}</b><div class="small ${m.price_change_percentage_24h>=0?'green':'red'}">${Number(m.price_change_percentage_24h||0).toFixed(2)}%</div></div><button class="secondary" onclick="selectCoin('${m.id}')">Select</button></div>`).join("")}
+function updateHeaderPrice(){const m=getCoin(selectedId)||markets[0];if(!m)return;document.getElementById("homeCoin").textContent=m.name+" · "+m.symbol.toUpperCase();document.getElementById("homePrice").textContent=fmt(m.current_price);document.getElementById("homeChange").textContent=Number(m.price_change_percentage_24h||0).toFixed(2)+"% (24h)";document.getElementById("tradeCoinLabel").textContent=m.symbol.toUpperCase()+" / USD";updateTradeEstimate()}
+async function loadHistory(){const id=selectedId;try{const r=await fetch(`https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${period}`);if(!r.ok)throw Error();const d=await r.json();drawChart(d.prices||[])}catch(e){drawChart([])}}
+function drawChart(points){const canvas=document.getElementById("homeChart");if(!canvas)return;const fallback=points.length?points:Array.from({length:20},(_,i)=>[Date.now()-(20-i)*3600000,priceOf(selectedId)*(0.99+Math.random()*.02)]);if(chart)chart.destroy();chart=new Chart(canvas,{type:"line",data:{labels:fallback.map(p=>new Date(p[0]).toLocaleDateString([], {month:"short",day:"numeric"})),datasets:[{data:fallback.map(p=>p[1]),borderColor:"#08e7a1",backgroundColor:"rgba(8,231,161,.10)",fill:true,tension:.22,pointRadius:0,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{mode:"index",intersect:false}},scales:{x:{ticks:{color:"#9998c3",maxTicksLimit:5},grid:{display:false}},y:{ticks:{color:"#9998c3",callback:v=>"$"+Number(v).toLocaleString()},grid:{color:"#2c2759"}}}}})}
+function setPeriod(p,btn){period=p;document.querySelectorAll(".timeframes button").forEach(b=>b.classList.remove("selected"));btn.classList.add("selected");loadHistory()}
+function placeTrade(side){const p=priceOf(selectedId);if(!p||!Number.isFinite(p)){toast("Market price not available yet.");return}const type=document.getElementById("orderType").value;const lp=Number(document.getElementById("limitPrice").value);if(type==="limit"&&(!lp||lp<=0)){toast("Enter a valid limit price.");return}const executionPrice=type==="limit"?lp:p;const qty=amount/executionPrice;const id=selectedId;const sym=(getCoin(id)?.symbol||id).toUpperCase();if(side==="BUY"){if(amount>demo.cash){toast("Insufficient demo balance. Reduce amount.");return}demo.cash-=amount;demo.holdings[id]=(demo.holdings[id]||0)+qty}else{const owned=demo.holdings[id]||0;if(owned<qty){toast("Not enough "+sym+" in your demo portfolio to sell this amount.");return}demo.holdings[id]=owned-qty;demo.cash+=amount}demo.orders.unshift({side,id,sym,amount,qty,price:executionPrice,time:new Date().toLocaleString(),type});demo.orders=demo.orders.slice(0,100);saveDemo();toast("Demo "+side+" completed · "+fmt(amount));}
+function renderDemo(){["homeBalance","portfolioValue","walletBalance"].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=fmt(demo.cash+Object.entries(demo.holdings).reduce((s,[id,q])=>s+q*priceOf(id),0))});const h=document.getElementById("holdings");if(h){const entries=Object.entries(demo.holdings).filter(([id,q])=>q>0.000000001);h.innerHTML=entries.length?entries.map(([id,q])=>`<div class="listrow"><div><b>${(getCoin(id)?.name)||id}</b><div class="small">${q.toFixed(8)} ${(getCoin(id)?.symbol||id).toUpperCase()}</div></div><b>${fmt(q*priceOf(id))}</b></div>`).join(""):'<div class="notice">No holdings yet. Make a demo BUY to start your portfolio.</div>'}const o=document.getElementById("orders");if(o)o.innerHTML=demo.orders.length?demo.orders.map(x=>`<div class="listrow"><div><b class="${x.side==='BUY'?'green':'red'}">${x.side} ${x.sym}</b><div class="small">${x.time} · ${x.type}</div><div class="small">${x.qty.toFixed(8)} at ${fmt(x.price)}</div></div><b>${fmt(x.amount)}</b></div>`).join(""):'<div class="notice">No demo orders yet.</div>';updateTradeEstimate()}
+function clearOrders(){if(confirm("Clear demo order history?")){demo.orders=[];saveDemo();toast("Demo history cleared")}}
+function resetDemo(){if(confirm("Reset demo cash, holdings and order history?")){demo={cash:10000,holdings:{},orders:[]};saveDemo();toast("Demo account reset")}}
+function renderTradeScreen(){const m=getCoin(selectedId);document.getElementById("tradeScreenMount").innerHTML=`<div class="info-row"><span>${m?.name||selectedId}</span><b>${fmt(priceOf(selectedId))}</b></div><div class="trade-buttons"><button class="trade-btn buy" onclick="placeTrade('BUY')">↗ BUY</button><button class="trade-btn sell" onclick="placeTrade('SELL')">↘ SELL</button></div><div class="field-label">TRADE AMOUNT</div><div class="amounts"><button onclick="setAmount(10,this)">$10</button><button onclick="setAmount(50,this)">$50</button><button onclick="setAmount(100,this)">$100</button><button onclick="setAmount(500,this)">$500</button><button onclick="setAmount(1000,this)">$1,000</button></div>`}
+async function checkAuth(){const e=document.getElementById("authStatus");if(!supabaseClient){e.textContent="Authentication service unavailable.";return}try{const {data}=await supabaseClient.auth.getSession();e.textContent=data.session?"Signed in as "+data.session.user.email:"Not signed in";}catch(err){e.textContent="Could not check sign-in status."}}
+async function authAction(action){if(!supabaseClient){toast("Authentication unavailable.");return}const email=document.getElementById("email").value.trim(),password=document.getElementById("password").value,name=document.getElementById("displayName").value.trim(),status=document.getElementById("authStatus");try{let result;if(action==="signup"){if(!email||password.length<8){toast("Enter a valid email and password of at least 8 characters.");return}result=await supabaseClient.auth.signUp({email,password,options:{data:{display_name:name},emailRedirectTo:SITE_URL}});if(result.error)throw result.error;status.textContent="Account created. Check your email if confirmation is required.";toast("Sign-up request sent.");return}if(action==="signin"){if(!email||!password){toast("Enter email and password.");return}result=await supabaseClient.auth.signInWithPassword({email,password});if(result.error)throw result.error;status.textContent="Signed in as "+result.data.user.email;toast("Signed in successfully.");return}if(action==="reset"){if(!email){toast("Enter your email first.");return}result=await supabaseClient.auth.resetPasswordForEmail(email,{redirectTo:SITE_URL+"?mode=reset"});if(result.error)throw result.error;toast("Password reset email requested.");return}if(action==="signout"){result=await supabaseClient.auth.signOut();if(result.error)throw result.error;status.textContent="Signed out";toast("Signed out.");return}}catch(err){status.textContent=err.message||"Authentication failed";toast(status.textContent)}}
+async function handleResetLink(){const params=new URLSearchParams(location.search);if(params.get("mode")==="reset"){showPage("account");const p=prompt("Enter your new password (at least 8 characters):");if(p&&p.length>=8){const {error}=await supabaseClient.auth.updateUser({password:p});if(error)toast(error.message);else toast("Password updated successfully.")}else if(p)toast("Password must be at least 8 characters.")}}
+renderDemo();loadMarkets();checkAuth();setInterval(()=>{if(!document.hidden)loadMarkets()},60000);window.addEventListener("load",()=>setTimeout(handleResetLink,800));
+</script>
+</body>
+</html>
